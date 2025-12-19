@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D A* Pathfinding Visualizer</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0f0f23 100%);
+      color: #ffffff;
+      overflow: auto;
+    }
+    
+    .app-container {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      position: relative;
+    }
+    
+    .background-grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 247, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 247, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .content-wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    
+    .title-section {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    
+    .main-title {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #00f7ff 0%, #0099ff 50%, #00ccff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 30px rgba(0, 247, 255, 0.3);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+    
+    .subtitle {
+      font-size: 1.1rem;
+      color: #8ab4f8;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+    
+    .control-panel {
+      background: rgba(20, 20, 40, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0, 247, 255, 0.2);
+      border-radius: 20px;
+      padding: 1.5rem 2rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      box-shadow: 0 8px 32px rgba(0, 247, 255, 0.1);
+    }
+    
+    .control-btn {
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .start-btn {
+      background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+      color: #0a0a1a;
+    }
+    
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 255, 136, 0.4);
+    }
+    
+    .reset-btn {
+      background: linear-gradient(135deg, #ff006e 0%, #cc0055 100%);
+      color: #ffffff;
+    }
+    
+    .reset-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(255, 0, 110, 0.4);
+    }
+    
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 1rem;
+      background: rgba(10, 10, 26, 0.5);
+      border-radius: 12px;
+      border: 1px solid rgba(0, 247, 255, 0.15);
+    }
+    
+    .speed-label {
+      font-size: 0.9rem;
+      color: #8ab4f8;
+      font-weight: 500;
+    }
+    
+    .speed-slider {
+      width: 120px;
+      height: 6px;
+      background: rgba(138, 180, 248, 0.2);
+      border-radius: 3px;
+      outline: none;
+      appearance: none;
+    }
+    
+    .speed-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #00f7ff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 247, 255, 0.6);
+    }
+    
+    .speed-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: #00f7ff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(0, 247, 255, 0.6);
+    }
+    
+    .visualizer-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      background: rgba(10, 10, 26, 0.4);
+      border: 2px solid rgba(0, 247, 255, 0.15);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .grid-3d {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1000px;
+      position: relative;
+    }
+    
+    .isometric-grid {
+      transform-style: preserve-3d;
+      transform: rotateX(45deg) rotateZ(45deg) scale(0.7);
+      display: grid;
+      grid-template-columns: repeat(12, 45px);
+      grid-template-rows: repeat(10, 45px);
+      gap: 3px;
+    }
+    
+    .cube {
+      width: 45px;
+      height: 45px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: all 0.3s ease;
+    }
+    
+    .cube-face {
+      position: absolute;
+      width: 45px;
+      height: 45px;
+      border: 1px solid rgba(0, 247, 255, 0.1);
+    }
+    
+    .cube-top {
+      transform: translateZ(22px);
+    }
+    
+    .cube-front {
+      transform: rotateX(90deg) translateZ(-22px);
+    }
+    
+    .cube-right {
+      transform: rotateY(90deg) translateZ(22px);
+    }
+    
+    .cube-empty .cube-top {
+      background: rgba(20, 20, 40, 0.3);
+    }
+    
+    .cube-empty .cube-front {
+      background: rgba(15, 15, 30, 0.5);
+    }
+    
+    .cube-empty .cube-right {
+      background: rgba(10, 10, 25, 0.6);
+    }
+    
+    .cube-obstacle .cube-top {
+      background: linear-gradient(135deg, #2a2a3a 0%, #1a1a2a 100%);
+      border-color: rgba(60, 60, 80, 0.4);
+    }
+    
+    .cube-obstacle .cube-front {
+      background: linear-gradient(135deg, #1a1a2a 0%, #0a0a1a 100%);
+    }
+    
+    .cube-obstacle .cube-right {
+      background: linear-gradient(135deg, #15151f 0%, #0a0a15 100%);
+    }
+    
+    .cube-start .cube-top {
+      background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.3);
+      animation: glow-green 2s ease-in-out infinite;
+    }
+    
+    .cube-start .cube-front {
+      background: linear-gradient(135deg, #00cc66 0%, #009944 100%);
+    }
+    
+    .cube-start .cube-right {
+      background: linear-gradient(135deg, #00aa55 0%, #008833 100%);
+    }
+    
+    .cube-goal .cube-top {
+      background: linear-gradient(135deg, #ff006e 0%, #cc0055 100%);
+      box-shadow: 0 0 30px rgba(255, 0, 110, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.3);
+      animation: glow-red 2s ease-in-out infinite;
+    }
+    
+    .cube-goal .cube-front {
+      background: linear-gradient(135deg, #cc0055 0%, #990044 100%);
+    }
+    
+    .cube-goal .cube-right {
+      background: linear-gradient(135deg, #aa0044 0%, #880033 100%);
+    }
+    
+    .cube-path .cube-top {
+      background: linear-gradient(135deg, #00ccff 0%, #0099ff 100%);
+      box-shadow: 0 0 25px rgba(0, 204, 255, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.4);
+      animation: glow-blue 1.5s ease-in-out infinite;
+    }
+    
+    .cube-path .cube-front {
+      background: linear-gradient(135deg, #0099ff 0%, #0066cc 100%);
+    }
+    
+    .cube-path .cube-right {
+      background: linear-gradient(135deg, #0088ee 0%, #0055bb 100%);
+    }
+    
+    .cube-explored .cube-top {
+      background: linear-gradient(135deg, rgba(138, 180, 248, 0.4) 0%, rgba(100, 150, 220, 0.3) 100%);
+      box-shadow: 0 0 15px rgba(138, 180, 248, 0.3);
+      animation: pulse-explore 1s ease-in-out;
+    }
+    
+    .cube-label {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%) rotateZ(-45deg) rotateX(-45deg);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+      pointer-events: none;
+    }
+    
+    .cube-start .cube-label {
+      color: #00ff88;
+    }
+    
+    .cube-goal .cube-label {
+      color: #ff006e;
+    }
+    
+    @keyframes glow-green {
+      0%, 100% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.3); }
+      50% { box-shadow: 0 0 50px rgba(0, 255, 136, 1), inset 0 0 30px rgba(255, 255, 255, 0.5); }
+    }
+    
+    @keyframes glow-red {
+      0%, 100% { box-shadow: 0 0 30px rgba(255, 0, 110, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.3); }
+      50% { box-shadow: 0 0 50px rgba(255, 0, 110, 1), inset 0 0 30px rgba(255, 255, 255, 0.5); }
+    }
+    
+    @keyframes glow-blue {
+      0%, 100% { box-shadow: 0 0 25px rgba(0, 204, 255, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.4); }
+      50% { box-shadow: 0 0 40px rgba(0, 204, 255, 1), inset 0 0 25px rgba(255, 255, 255, 0.6); }
+    }
+    
+    @keyframes pulse-explore {
+      0% { opacity: 0; transform: scale(0.8); }
+      50% { opacity: 1; }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    
+    .legend {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: #8ab4f8;
+    }
+    
+    .legend-box {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .legend-start { background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%); }
+    .legend-goal { background: linear-gradient(135deg, #ff006e 0%, #cc0055 100%); }
+    .legend-path { background: linear-gradient(135deg, #00ccff 0%, #0099ff 100%); }
+    .legend-explored { background: linear-gradient(135deg, rgba(138, 180, 248, 0.6) 0%, rgba(100, 150, 220, 0.5) 100%); }
+    .legend-obstacle { background: linear-gradient(135deg, #2a2a3a 0%, #1a1a2a 100%); }
+    
+    @media (max-width: 768px) {
+      .main-title {
+        font-size: 2rem;
+      }
+      
+      .subtitle {
+        font-size: 0.9rem;
+      }
+      
+      .control-panel {
+        flex-direction: column;
+        padding: 1rem;
+      }
+      
+      .isometric-grid {
+        transform: rotateX(45deg) rotateZ(45deg) scale(0.5);
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="background-grid"></div>
+  <div class="app-container">
+   <div class="content-wrapper">
+    <div class="title-section">
+     <h1 class="main-title" id="main-title">3D A* Pathfinding Algorithm Visualizer</h1>
+     <p class="subtitle" id="subtitle">Real-Time Shortest Path Visualization Using Heuristic Search</p>
+    </div>
+    <div class="control-panel"><button class="control-btn start-btn" id="start-btn">Start</button> <button class="control-btn reset-btn" id="reset-btn">Reset</button>
+     <div class="speed-control"><span class="speed-label" id="speed-label">Speed Control</span> <input type="range" class="speed-slider" id="speed-slider" min="1" max="10" value="5">
+     </div>
+    </div>
+    <div class="visualizer-container">
+     <div class="grid-3d" id="grid-3d"></div>
+    </div>
+    <div class="legend">
+     <div class="legend-item">
+      <div class="legend-box legend-start"></div><span>Start Node</span>
+     </div>
+     <div class="legend-item">
+      <div class="legend-box legend-goal"></div><span>Goal Node</span>
+     </div>
+     <div class="legend-item">
+      <div class="legend-box legend-path"></div><span>Shortest Path</span>
+     </div>
+     <div class="legend-item">
+      <div class="legend-box legend-explored"></div><span>Explored Nodes</span>
+     </div>
+     <div class="legend-item">
+      <div class="legend-box legend-obstacle"></div><span>Obstacles</span>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      main_title: "3D A* Pathfinding Algorithm Visualizer",
+      subtitle: "Real-Time Shortest Path Visualization Using Heuristic Search",
+      start_button_text: "Start",
+      reset_button_text: "Reset",
+      speed_label: "Speed Control",
+      background_color: "#0a0a1a",
+      primary_color: "#00f7ff",
+      start_color: "#00ff88",
+      goal_color: "#ff006e",
+      path_color: "#00ccff"
+    };
+    
+    let config = { ...defaultConfig };
+    
+    const GRID_ROWS = 10;
+    const GRID_COLS = 12;
+    
+    const START_POS = { row: 2, col: 2 };
+    const GOAL_POS = { row: 7, col: 9 };
+    
+    const OBSTACLES = [
+      { row: 1, col: 5 }, { row: 2, col: 5 }, { row: 3, col: 5 }, { row: 4, col: 5 },
+      { row: 5, col: 5 }, { row: 6, col: 5 }, { row: 7, col: 5 },
+      { row: 4, col: 7 }, { row: 5, col: 7 }, { row: 6, col: 7 }, { row: 7, col: 7 },
+      { row: 8, col: 7 }, { row: 2, col: 8 }, { row: 3, col: 8 }
+    ];
+    
+    const PATH_NODES = [
+      { row: 2, col: 2 }, { row: 2, col: 3 }, { row: 1, col: 3 }, { row: 1, col: 4 },
+      { row: 0, col: 4 }, { row: 0, col: 5 }, { row: 0, col: 6 }, { row: 0, col: 7 },
+      { row: 1, col: 7 }, { row: 1, col: 8 }, { row: 1, col: 9 }, { row: 2, col: 9 },
+      { row: 3, col: 9 }, { row: 4, col: 9 }, { row: 5, col: 9 }, { row: 6, col: 9 },
+      { row: 7, col: 9 }
+    ];
+    
+    const EXPLORED_NODES = [
+      { row: 2, col: 2 }, // Start
+      { row: 2, col: 3 }, { row: 3, col: 2 }, { row: 1, col: 2 },
+      { row: 3, col: 3 }, { row: 1, col: 3 }, { row: 2, col: 4 },
+      { row: 3, col: 4 }, { row: 0, col: 3 }, { row: 1, col: 4 },
+      { row: 4, col: 2 }, { row: 4, col: 3 }, { row: 0, col: 2 },
+      { row: 0, col: 4 }, { row: 2, col: 6 }, { row: 4, col: 4 },
+      { row: 3, col: 6 }, { row: 1, col: 6 }, { row: 0, col: 5 },
+      { row: 5, col: 2 }, { row: 5, col: 3 }, { row: 0, col: 6 },
+      { row: 1, col: 7 }, { row: 2, col: 7 }, { row: 3, col: 7 },
+      { row: 4, col: 6 }, { row: 5, col: 4 }, { row: 0, col: 7 },
+      { row: 1, col: 8 }, { row: 2, col: 9 }, { row: 6, col: 2 },
+      { row: 6, col: 3 }, { row: 6, col: 4 }, { row: 5, col: 6 },
+      { row: 4, col: 8 }, { row: 1, col: 9 }, { row: 3, col: 9 },
+      { row: 7, col: 2 }, { row: 7, col: 3 }, { row: 7, col: 4 },
+      { row: 6, col: 6 }, { row: 5, col: 8 }, { row: 4, col: 9 },
+      { row: 8, col: 2 }, { row: 8, col: 3 }, { row: 8, col: 4 },
+      { row: 8, col: 5 }, { row: 7, col: 6 }, { row: 6, col: 8 },
+      { row: 5, col: 9 }, { row: 9, col: 2 }, { row: 9, col: 3 },
+      { row: 9, col: 4 }, { row: 9, col: 5 }, { row: 8, col: 6 },
+      { row: 7, col: 8 }, { row: 6, col: 9 }, { row: 9, col: 6 },
+      { row: 8, col: 8 }, { row: 9, col: 7 }, { row: 9, col: 8 },
+      { row: 7, col: 9 }
+    ];
+    
+    let isAnimating = false;
+    let animationSpeed = 5;
+    
+    function createGrid() {
+      const gridContainer = document.getElementById('grid-3d');
+      gridContainer.innerHTML = '';
+      
+      const isometricGrid = document.createElement('div');
+      isometricGrid.className = 'isometric-grid';
+      
+      for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+          const cube = createCube(row, col);
+          isometricGrid.appendChild(cube);
+        }
+      }
+      
+      gridContainer.appendChild(isometricGrid);
+    }
+    
+    function createCube(row, col) {
+      const cube = document.createElement('div');
+      cube.className = 'cube cube-empty';
+      cube.dataset.row = row;
+      cube.dataset.col = col;
+      
+      const top = document.createElement('div');
+      top.className = 'cube-face cube-top';
+      
+      const front = document.createElement('div');
+      front.className = 'cube-face cube-front';
+      
+      const right = document.createElement('div');
+      right.className = 'cube-face cube-right';
+      
+      cube.appendChild(top);
+      cube.appendChild(front);
+      cube.appendChild(right);
+      
+      if (row === START_POS.row && col === START_POS.col) {
+        cube.classList.add('cube-start');
+        const label = document.createElement('div');
+        label.className = 'cube-label';
+        label.textContent = 'Start';
+        cube.appendChild(label);
+      } else if (row === GOAL_POS.row && col === GOAL_POS.col) {
+        cube.classList.add('cube-goal');
+        const label = document.createElement('div');
+        label.className = 'cube-label';
+        label.textContent = 'Goal';
+        cube.appendChild(label);
+      } else if (OBSTACLES.some(obs => obs.row === row && obs.col === col)) {
+        cube.classList.remove('cube-empty');
+        cube.classList.add('cube-obstacle');
+      }
+      
+      return cube;
+    }
+    
+    async function animatePathfinding() {
+      if (isAnimating) return;
+      isAnimating = true;
+      
+      resetGrid();
+      
+      const delay = 1000 / animationSpeed;
+      
+      for (const node of EXPLORED_NODES) {
+        if (node.row === START_POS.row && node.col === START_POS.col) continue;
+        if (node.row === GOAL_POS.row && node.col === GOAL_POS.col) continue;
+        
+        const cube = document.querySelector(`[data-row="${node.row}"][data-col="${node.col}"]`);
+        if (cube && !cube.classList.contains('cube-obstacle')) {
+          cube.classList.add('cube-explored');
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      for (const node of PATH_NODES) {
+        if (node.row === START_POS.row && node.col === START_POS.col) continue;
+        if (node.row === GOAL_POS.row && node.col === GOAL_POS.col) continue;
+        
+        const cube = document.querySelector(`[data-row="${node.row}"][data-col="${node.col}"]`);
+        if (cube) {
+          cube.classList.remove('cube-explored');
+          cube.classList.add('cube-path');
+        }
+        await new Promise(resolve => setTimeout(resolve, delay * 1.5));
+      }
+      
+      isAnimating = false;
+    }
+    
+    function resetGrid() {
+      const cubes = document.querySelectorAll('.cube');
+      cubes.forEach(cube => {
+        cube.classList.remove('cube-explored', 'cube-path');
+        
+        const isStart = cube.classList.contains('cube-start');
+        const isGoal = cube.classList.contains('cube-goal');
+        const isObstacle = cube.classList.contains('cube-obstacle');
+        
+        if (!isStart && !isGoal && !isObstacle) {
+          cube.className = 'cube cube-empty';
+        }
+      });
+    }
+    
+    async function onConfigChange(newConfig) {
+      const mainTitle = document.getElementById('main-title');
+      const subtitle = document.getElementById('subtitle');
+      const startBtn = document.getElementById('start-btn');
+      const resetBtn = document.getElementById('reset-btn');
+      const speedLabel = document.getElementById('speed-label');
+      
+      if (mainTitle) {
+        mainTitle.textContent = newConfig.main_title || defaultConfig.main_title;
+      }
+      
+      if (subtitle) {
+        subtitle.textContent = newConfig.subtitle || defaultConfig.subtitle;
+      }
+      
+      if (startBtn) {
+        startBtn.textContent = newConfig.start_button_text || defaultConfig.start_button_text;
+      }
+      
+      if (resetBtn) {
+        resetBtn.textContent = newConfig.reset_button_text || defaultConfig.reset_button_text;
+      }
+      
+      if (speedLabel) {
+        speedLabel.textContent = newConfig.speed_label || defaultConfig.speed_label;
+      }
+    }
+    
+    function mapToCapabilities(cfg) {
+      return {
+        recolorables: [
+          {
+            get: () => cfg.background_color || defaultConfig.background_color,
+            set: (value) => {
+              cfg.background_color = value;
+              window.elementSdk.setConfig({ background_color: value });
+            }
+          },
+          {
+            get: () => cfg.primary_color || defaultConfig.primary_color,
+            set: (value) => {
+              cfg.primary_color = value;
+              window.elementSdk.setConfig({ primary_color: value });
+            }
+          },
+          {
+            get: () => cfg.start_color || defaultConfig.start_color,
+            set: (value) => {
+              cfg.start_color = value;
+              window.elementSdk.setConfig({ start_color: value });
+            }
+          },
+          {
+            get: () => cfg.goal_color || defaultConfig.goal_color,
+            set: (value) => {
+              cfg.goal_color = value;
+              window.elementSdk.setConfig({ goal_color: value });
+            }
+          },
+          {
+            get: () => cfg.path_color || defaultConfig.path_color,
+            set: (value) => {
+              cfg.path_color = value;
+              window.elementSdk.setConfig({ path_color: value });
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+    
+    function mapToEditPanelValues(cfg) {
+      return new Map([
+        ["main_title", cfg.main_title || defaultConfig.main_title],
+        ["subtitle", cfg.subtitle || defaultConfig.subtitle],
+        ["start_button_text", cfg.start_button_text || defaultConfig.start_button_text],
+        ["reset_button_text", cfg.reset_button_text || defaultConfig.reset_button_text],
+        ["speed_label", cfg.speed_label || defaultConfig.speed_label]
+      ]);
+    }
+    
+    document.getElementById('start-btn').addEventListener('click', () => {
+      animatePathfinding();
+    });
+    
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      resetGrid();
+    });
+    
+    document.getElementById('speed-slider').addEventListener('input', (e) => {
+      animationSpeed = parseInt(e.target.value);
+    });
+    
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+    
+    createGrid();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9b06e7aff4d484d1',t:'MTc2NjE0NzM2MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
